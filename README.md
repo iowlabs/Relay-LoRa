@@ -1,4 +1,4 @@
-# Reele-LoRa
+# Relay-LoRa
 
 Este proyecto consiste en un Rele activado por lora para uso en redes de este estilo
 
