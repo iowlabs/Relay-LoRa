@@ -1,20 +1,58 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <LoRa.h>
+#include <WiFiManager.h>
+#include "esp_timer.h"
+
  //Estos pines fueron utilizados en la prueba de concepto realizada en placa perforada con los componentes modulares, estan sujetos a cambios en la realización de una placa
 #define RFM_CS       5
 #define RFM_RST      17
 #define RFM_DIO0     4
 #define Rele     32
+#define Wifistatus     33
+#define StatusSW     34
 
 int releState = 0;
+bool wifiConnect = false;
+bool wifiPreviouslyConnected = false;
+int ledstate = 0;
+
+void EstadoWIFI() {
+  // Si el pin StatusSW está en HIGH
+  if (digitalRead(StatusSW) == HIGH) {
+    wifiConnect = true; // Marcar que el Wi-Fi está conectado
+    digitalWrite(Wifistatus, HIGH);
+  } else {
+    wifiConnect = false; // Marcar que el Wi-Fi está desconectado
+    digitalWrite(Wifistatus, LOW);
+  }
+}
+
+void LedWifi(){
+  static unsigned long previousMillis = 0; // Tiempo anterior de ejecución de la función
+  const unsigned long interval = 1000; // Intervalo de tiempo para cambiar el estado del LED
+
+  unsigned long currentMillis = millis(); // Tiempo actual
+  if (currentMillis - previousMillis >= interval) { // Si ha pasado el intervalo de tiempo
+    previousMillis = currentMillis; // Actualizamos el tiempo anterior
+
+    if (wifiConnect == 1 && wifiPreviouslyConnected) { // Si el Wi-Fi está conectado y estaba conectado previamente
+      ledstate = !ledstate; // Cambiamos el estado del LED
+      digitalWrite(Wifistatus, ledstate); // Encendemos o apagamos el LED
+    } else { // Si el Wi-Fi no está conectado o no estaba conectado previamente
+      digitalWrite(Wifistatus, LOW); // Apagamos el LED
+    }
+  }
+}
 
 void setup() {
+
   Serial.begin(115200);
-  while (!Serial);
 
   LoRa.setPins(RFM_CS, RFM_RST, RFM_DIO0); //Setea los pines de LoRa, sin contar miso, mosi y clk que lo realiza la libreria
   pinMode(Rele, OUTPUT); //declara el pin Rele como output
+  pinMode(Wifistatus, OUTPUT); //declara el pin Estad Wifi como output
+  pinMode(StatusSW, INPUT); //declara el pin SWITCH como input
 
   Serial.print("Conectando a LoRa..."); //busca inicializar LoRa, si no lo logra se queda suspendido
   while(!LoRa.begin(915E6))
@@ -23,9 +61,45 @@ void setup() {
     delay(500);
   }
   Serial.println("Listo LoRa");
+
+  attachInterrupt(digitalPinToInterrupt(StatusSW), EstadoWIFI, CHANGE);
 }
 
 void loop() {
+
+  if (wifiConnect == 1 && !wifiPreviouslyConnected) {
+    // Creamos una instancia de WiFiManager
+    WiFi.mode(WIFI_STA);
+
+    WiFiManager wm;
+
+    wm.resetSettings();
+
+    bool res;
+    res = wm.autoConnect("AutoConnectAP","password");
+    
+    if(!res) {
+      Serial.println("Failed to connect");
+      // ESP.restart();
+    } 
+    else {
+      //if you get here you have connected to the WiFi    
+      Serial.println("connected...yeey :)");
+      // Una vez que se conecta exitosamente, imprimimos la dirección IP asignada
+      Serial.println("Conexión establecida!");
+      Serial.print("Dirección IP: ");
+      Serial.println(WiFi.localIP());
+      wifiPreviouslyConnected = true;
+    }
+  }
+  else if (wifiConnect == 0 && wifiPreviouslyConnected) {
+    // Si el pin StatusSW está en LOW, desconectamos el WiFi
+    WiFi.disconnect();
+    Serial.println("WiFi desconectado");
+
+    wifiPreviouslyConnected = false;
+  }
+
   // Espera a recibir un mensaje LoRa
   int packetSize = LoRa.parsePacket();
   if (packetSize) {
@@ -43,8 +117,8 @@ void loop() {
         Serial.println(error.c_str());
         return;
       }
-      if (doc_rx.containsKey("Rele")) {
-        releState = doc_rx["Rele"];//Busca "Rele" para saber su estado
+      if (doc_rx.containsKey("R000")) {
+        releState = doc_rx["R000"];//Busca "Rele" para saber su estado
         Serial.print("Estado del rele: ");
         Serial.println(releState);
       } else {
@@ -52,6 +126,24 @@ void loop() {
       }
     }
   }
-  digitalWrite(Rele, releState); //Asocia el ultimo valor registrado de releState a la salida, por defecto sera 0, cambia con el LoRa
-  delay(10);
+
+  digitalWrite(Rele, releState);
+  /*
+  int currentState = digitalRead(Rele);
+  Serial.println("Estado actual:");
+  Serial.println(currentState);
+
+  // Cambia al estado opuesto
+  int newState = !currentState;
+
+  // Escribe el nuevo estado al relé
+  digitalWrite(Rele, newState);
+  Serial.println("Nuevo estado:");
+  Serial.println(newState);
+  */
+
+  LedWifi();
+
+  // Espera un tiempo antes de repetir el proceso
+  delay(50);
 }
