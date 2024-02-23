@@ -2,10 +2,7 @@
 #include <ArduinoJson.h>
 #include <LoRa.h>
 #include <WiFiManager.h>
-#include "esp_timer.h"
-
 #include <WiFi.h>
-#include <HTTPClient.h>
 #include <HTTPUpdate.h>
 #include "WiFiClientSecure.h"
 
