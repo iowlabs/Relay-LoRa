@@ -48,7 +48,7 @@ const char * rootCACertificate = \
 
 WiFiClientSecure client;
 
-#define URL_fw_Bin "https://raw.githubusercontent.com/Iowlabs/Iguana/main/firmware/OTA_bin_file/firmware.bin"
+#define URL_fw_Bin "https://raw.githubusercontent.com/Iowlabs/Relay-LoRa/main/firmware/OTAupdate/firmware.bin"
 
 void EstadoWIFI() {
   // Si el pin StatusSW está en HIGH
@@ -143,7 +143,7 @@ void firmwareUpdate(void)
 {
   //WiFiClientSecure client;
   client.setCACert(rootCACertificate);
-  httpUpdate.setLedPin(LED_BUILTIN, LOW);
+  httpUpdate.setLedPin(Wifistatus, LOW);
   Serial.println("Updating firmware...");
   t_httpUpdate_return ret = httpUpdate.update(client, URL_fw_Bin);
   Serial.println("Firmware updated!");
@@ -214,6 +214,8 @@ void loop() {
   Serial.println(newState);
   */
   LedWifi();
+
+  Serial.println("Versión 1");
 
   // Espera un tiempo antes de repetir el proceso
   delay(50);
