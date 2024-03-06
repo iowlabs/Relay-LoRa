@@ -212,7 +212,7 @@ void loop() {
   */
   LedWifi();
 
-  Serial.println("Versión 1");
+  //Serial.println("Versión 1");
 
   // Espera un tiempo antes de repetir el proceso
   delay(50);
